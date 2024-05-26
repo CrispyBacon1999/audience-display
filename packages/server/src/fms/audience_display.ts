@@ -1,16 +1,17 @@
-import type { Server } from "bun";
-import type { MatchState, Screen, EventDetails, ScoreChangedData } from "lib";
-import { FMSSignalRConnection } from "../signalr/connection";
-import { LevelParam, type FMSMatchPreview } from "lib/types/FMS_API_audience";
+import type { Server } from 'bun';
+import type { MatchState, Screen, EventDetails, ScoreChangedData } from 'lib';
+import { FMSSignalRConnection } from '../signalr/connection';
+import { LevelParam, type FMSMatchPreview } from 'lib/types/FMS_API_audience';
+import { Lighting } from '../effects/lighting/dmx_light';
 
 export class AudienceDisplayManager {
   private server: Server;
   private fmsUrl: string;
   private fmsConnection: FMSSignalRConnection;
 
-  private screen: Screen = "none";
+  private screen: Screen = 'none';
   private eventDetails: EventDetails = {
-    name: "Rainbow Rumble",
+    name: 'Rainbow Rumble',
     matchCount: 80,
   };
   private match: MatchState | null = {
@@ -83,35 +84,37 @@ export class AudienceDisplayManager {
     },
     details: {
       matchNumber: 13,
-      matchType: "sf",
+      matchType: 'sf',
     },
   };
+
+  private lighting: Lighting;
 
   constructor(server: Server, fmsUrl: string) {
     this.server = server;
     this.fmsUrl = fmsUrl;
     this.fmsConnection = new FMSSignalRConnection(fmsUrl);
 
-    this.fmsConnection.on("timer", async (time) => {
+    this.fmsConnection.on('timer', async (time) => {
       if (this.match) {
         this.match.timer = time;
       }
       this.broadcastState();
     });
 
-    this.fmsConnection.on("videoSwitch", async (screen) => {
+    this.fmsConnection.on('videoSwitch', async (screen) => {
       this.screen = screen;
 
-      if (screen === "match-preview") {
+      if (screen === 'match-preview') {
         if (this.match) {
-          this.match.details.matchType = "q";
+          this.match.details.matchType = 'q';
           const matchPreview = await this.getMatchPreview(LevelParam.Qual, 3);
           console.log(matchPreview);
           this.match.details.matchNumber = matchPreview.matchNumber;
           for (let i = 0; i < 3; i++) {
             const matchPreviewTeamRed =
               matchPreview.redAlliance[
-                `team${i + 1}` as "team1" | "team2" | "team3"
+                `team${i + 1}` as 'team1' | 'team2' | 'team3'
               ];
             this.match.teams.red[i] = {
               name: matchPreviewTeamRed.teamName,
@@ -122,7 +125,7 @@ export class AudienceDisplayManager {
 
             const matchPreviewTeamBlue =
               matchPreview.blueAlliance[
-                `team${i + 1}` as "team1" | "team2" | "team3"
+                `team${i + 1}` as 'team1' | 'team2' | 'team3'
               ];
             this.match.teams.blue[i] = {
               name: matchPreviewTeamBlue.teamName,
@@ -132,18 +135,16 @@ export class AudienceDisplayManager {
             };
           }
 
-          if (this.match.details.matchType === "q") {
+          if (this.match.details.matchType === 'q') {
             this.eventDetails.matchCount =
               matchPreview.numberOfQualMatches ?? 0;
           }
         }
       }
-
-      this.broadcastState();
     });
 
     this.fmsConnection.on(
-      "blueScoreChanged",
+      'blueScoreChanged',
       async (data: ScoreChangedData) => {
         if (this.match) {
           this.match.score.blue = {
@@ -162,9 +163,9 @@ export class AudienceDisplayManager {
           };
         }
         this.broadcastState();
-      },
+      }
     );
-    this.fmsConnection.on("redScoreChanged", async (data: ScoreChangedData) => {
+    this.fmsConnection.on('redScoreChanged', async (data: ScoreChangedData) => {
       if (this.match) {
         this.match.score.red = {
           amp: data.TeleopAmpNotePoints + data.AutoAmpNotePoints,
@@ -183,54 +184,90 @@ export class AudienceDisplayManager {
       }
       this.broadcastState();
     });
-    this.fmsConnection.on("matchStart", () => {
-      this.playSound("matchStart");
+    this.fmsConnection.on('matchStart', () => {
+      this.playSound('matchStart');
     });
-    this.fmsConnection.on("autoEnd", () => {
-      this.playSound("autoEnd");
+    this.fmsConnection.on('autoEnd', () => {
+      this.playSound('autoEnd');
     });
-    this.fmsConnection.on("teleopStart", () => {
-      this.playSound("teleopStart");
+    this.fmsConnection.on('teleopStart', () => {
+      this.playSound('teleopStart');
     });
-    this.fmsConnection.on("endgameWarning", () => {
-      this.playSound("endgameWarning");
+    this.fmsConnection.on('endgameWarning', () => {
+      this.playSound('endgameWarning');
     });
-    this.fmsConnection.on("matchEnd", () => {
-      this.playSound("matchEnd");
+    this.fmsConnection.on('matchEnd', () => {
+      this.playSound('matchEnd');
     });
-    this.fmsConnection.on("matchAbort", () => {
-      this.playSound("matchAbort");
+    this.fmsConnection.on('matchAbort', () => {
+      this.playSound('matchAbort');
+    });
+
+    this.lighting = new Lighting({
+      unicastIP: '10.0.100.6',
+    });
+    this.setupLighting();
+
+    this.broadcastState();
+  }
+
+  setupLighting() {
+    this.fmsConnection.on('videoSwitch', () => {
+      if (this.screen === 'match-ready') {
+        this.lighting.white();
+      }
+      if (this.screen === 'match-preview') {
+        this.lighting.allianceColor();
+      }
+      if (this.screen === 'scores-ready') {
+        this.lighting.allianceColor();
+      }
+      if (this.screen === 'score-reveal') {
+        // Determine winner, then set lighting to that color
+        const redScore = this.match?.score.red.score ?? 0;
+        const blueScore = this.match?.score.blue.score ?? 0;
+
+        setTimeout(() => {
+          if (redScore > blueScore) {
+            this.lighting.fullRed();
+          } else if (blueScore > redScore) {
+            this.lighting.fullBlue();
+          } else {
+            this.lighting.allianceColor();
+          }
+        }, 3000);
+      }
     });
   }
 
   broadcastState() {
     this.server.publish(
-      "audience-display",
+      'audience-display',
       JSON.stringify({
-        type: "state",
+        type: 'state',
         data: {
           connected: true,
           screen: this.screen,
           match: this.match,
           eventDetails: this.eventDetails,
         },
-      }),
+      })
     );
   }
 
   playSound(soundName: string) {
     this.server.publish(
-      "audience-display",
+      'audience-display',
       JSON.stringify({
-        type: "sound",
+        type: 'sound',
         data: soundName,
-      }),
+      })
     );
   }
 
   private async getMatchPreview(level: LevelParam, matchNumber: number) {
     const res = await fetch(
-      `http://${this.fmsUrl}/api/v1.0/audience/get/Get${LevelParam[level]}MatchPreviewData/${matchNumber}`,
+      `http://${this.fmsUrl}/api/v1.0/audience/get/Get${LevelParam[level]}MatchPreviewData/${matchNumber}`
     );
     return (await res.json()) as FMSMatchPreview;
   }

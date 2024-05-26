@@ -8,5 +8,9 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "jspack": "^0.0.4",
+    "jspack.ts": "^1.0.9"
   }
 }
