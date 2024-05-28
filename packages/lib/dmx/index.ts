@@ -425,7 +425,10 @@ export class Sender {
     }
 
     // Initialize values array with 512 values
-    this.values = new Array(512).fill(0);
+    this.values = [];
+    for (let i = 0; i < 512; i++) {
+      this.values.push(0);
+    }
 
     if (!this.subUniverse) {
       this.subUniverse = (this.subnet << 4) | this.universe;
@@ -438,16 +441,20 @@ export class Sender {
     Bun.udpSocket({
       binaryType: 'buffer',
       port: this.port,
-      hostname: this.ip,
       socket: {
         error(socket, error) {
           console.error('Socket Error:', error);
         },
       },
-    }).then((socket) => {
-      this.socket = socket;
-      this.transmit();
-    });
+    })
+      .then((socket) => {
+        this.socket = socket;
+        console.log('Set up socket for artnet');
+        this.transmit();
+      })
+      .catch((error) => {
+        console.error('Error creating socket:', error);
+      });
 
     this.interval = setInterval(() => {
       this.transmit();
@@ -461,22 +468,28 @@ export class Sender {
       }
 
       let dmxPacket = Buffer.from(
-        jspack.Pack('!7sBHHBBBBH', [
-          'Art-Net',
-          0,
-          0x0050,
-          14,
-          this.artDmxSeq,
-          0,
-          this.subUniverse,
-          this.net,
-          512,
-          ...this.values,
-        ])
+        jspack.Pack(
+          '!7sBHHBBBBH512B',
+          [
+            'Art-Net',
+            0,
+            0x0050,
+            14,
+            this.artDmxSeq,
+            0,
+            this.subUniverse,
+            this.net,
+            512,
+          ].concat(this.values.slice(0, 512) as number[])
+        )
       );
       this.artDmxSeq++;
 
-      this.socket.send(dmxPacket, this.port, this.ip);
+      const val = this.socket.send(dmxPacket, this.port, this.ip);
+      // console.log(
+      //   `Transmitting DMX to ${this.ip}:${this.port}, ${this.artDmxSeq} : ${val}`
+      // );
+      // console.log(dmxPacket);
     }
   }
 

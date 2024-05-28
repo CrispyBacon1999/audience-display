@@ -212,6 +212,24 @@ export class AudienceDisplayManager {
   }
 
   setupLighting() {
+    this.lighting.addLight({
+      dimmerChannel: 0,
+      redChannel: 1,
+      greenChannel: 2,
+      blueChannel: 3,
+      fieldSide: 'red',
+      startIndex: 1,
+    });
+
+    this.lighting.addLight({
+      dimmerChannel: 0,
+      redChannel: 1,
+      greenChannel: 2,
+      blueChannel: 3,
+      fieldSide: 'blue',
+      startIndex: 8,
+    });
+
     this.fmsConnection.on('videoSwitch', () => {
       if (this.screen === 'match-ready') {
         this.lighting.white();

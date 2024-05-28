@@ -23,16 +23,25 @@ class DMXLight {
     blue: number,
     instantSend: boolean = false
   ) {
-    this.dmx.prepChannel(this.config.redChannel, red);
-    this.dmx.prepChannel(this.config.greenChannel, green);
-    this.dmx.prepChannel(this.config.blueChannel, blue);
+    this.dmx.prepChannel(this.config.startIndex + this.config.redChannel, red);
+    this.dmx.prepChannel(
+      this.config.startIndex + this.config.greenChannel,
+      green
+    );
+    this.dmx.prepChannel(
+      this.config.startIndex + this.config.blueChannel,
+      blue
+    );
     if (instantSend) {
       this.dmx.transmit();
     }
   }
 
   setDimmer(value: number, instantSend: boolean = false) {
-    this.dmx.prepChannel(this.config.dimmerChannel, value);
+    this.dmx.prepChannel(
+      this.config.startIndex + this.config.dimmerChannel,
+      value
+    );
     if (instantSend) {
       this.dmx.transmit();
     }
@@ -82,7 +91,10 @@ export class Lighting {
   }
 
   addLight(config: RGBLightConfig) {
-    const light = new DMXLight(this.dmxSender, config);
+    const light = new DMXLight(this.dmxSender, {
+      ...config,
+      startIndex: config.startIndex - 1,
+    });
     this.lights.push(light);
     return light;
   }
