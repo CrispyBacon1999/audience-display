@@ -204,7 +204,7 @@ export class AudienceDisplayManager {
     });
 
     this.lighting = new Lighting({
-      unicastIP: '10.0.100.6',
+      unicastIP: '10.0.100.4',
     });
     this.setupLighting();
 

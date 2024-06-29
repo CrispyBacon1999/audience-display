@@ -2,7 +2,9 @@
   "name": "@rainbow-rumble/audience-display",
   "private": true,
   "version": "0.0.0",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "server:dev": "cd packages/server && bun dev",
     "server:build": "cd packages/server && bun build",
@@ -13,7 +15,8 @@
     "fakefms:start": "bun fakefms:build && npm-run-all -p fakefms:dev fakefms-ui:dev",
     "fakefms:dev": "docker run -p 8080:8080 fakefms",
     "fakefms:build": "cd packages/fakefms && docker build -t fakefms .",
-    "fakefms-ui:dev": "cd packages/fakefms-ui && bun dev"
+    "fakefms-ui:dev": "cd packages/fakefms-ui && bun dev",
+    "db:studio": "cd packages/server && drizzle-kit studio"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.19",

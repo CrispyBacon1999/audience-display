@@ -13,7 +13,8 @@ type Events =
   | 'matchEnd'
   | 'matchAbort'
   | 'teleopStart'
-  | 'autoEnd';
+  | 'autoEnd'
+  | 'fieldGreen';
 
 export class FMSSignalRConnection {
   private fmsUrl: string;
@@ -33,6 +34,7 @@ export class FMSSignalRConnection {
     matchAbort: [],
     teleopStart: [],
     autoEnd: [],
+    fieldGreen: [],
   };
 
   constructor(fmsUrl: string) {
@@ -128,7 +130,7 @@ export class FMSSignalRConnection {
     });
 
     this.infrastructureConnection.on('plc_status_changed', (data) => {
-      // console.log("plc_status_changed: ", data);
+      // console.log('plc_status_changed: ', data);
     });
 
     this.infrastructureConnection.on(
@@ -162,6 +164,9 @@ export class FMSSignalRConnection {
 
     this.infrastructureConnection.on('plc_match_status_changed', (data) => {
       console.log('plc_match_status_changed: ', data);
+      if (data.RefDone) {
+        this.emit('fieldGreen', null);
+      }
     });
 
     this.infrastructureConnection.on('matchstatusinfochanged', (data) => {
